@@ -15,7 +15,7 @@ cv2.setNumThreads(0)
 # ============================================================
 # Retinal density model parameters for Ganglion
 # These constants come from the paper
-# fi(r): integrated density function (cells out to eccentricity r)
+# fi(r): integrated density function 
 # fii(r): inverse mapping from cell-count space back to degrees
 # ============================================================
 A = 0.98
@@ -85,8 +85,7 @@ def pad_to_square_reflect(img_bgr: np.ndarray) -> np.ndarray:
 def build_pyramid(image_bgr: np.ndarray, levels: int = 6) -> list[np.ndarray]:
     """
     Builds a Gaussian pyramid: level 0 = original, level 1 = downsampled,
-    level 2 = downsampled again, etc.
-
+    level 2 = downsampled again, and so on..
     Each higher level is blurrier and lower resolution.
     """
     pyr = [image_bgr]
@@ -111,16 +110,16 @@ def retinal_distort(
 ) -> np.ndarray:
     """
     Creates a foveated image using:
-      1) a retinal distortion (nonlinear sampling map)
-      2) a Gaussian pyramid (different blur levels)
-      3) blending blur level based on eccentricity
+      - a retinal distortion (nonlinear sampling map)
+      - a Gaussian pyramid (different blur levels)
+      - blending blur level based on eccentricity
 
     Important:
     - The 'fovea' region is forced to blur level 0 so the center stays sharp.
     - Periphery gradually shifts toward higher blur levels.
     """
 
-    # --- Sanity: must be square for radial mapping
+    # must be square for radial mapping
     if image_bgr.shape[0] != image_bgr.shape[1]:
         raise ValueError("Input must be square (pad first).")
 
@@ -139,7 +138,7 @@ def retinal_distort(
     rad_cells = np.sqrt(x * x + y * y)            # radius in cell-space
     ang = np.arctan2(y, x).astype(np.float32)     # angle
 
-    # mask: valid retina circle
+    # mask valid retina circle
     inside = rad_cells <= n_cells
 
     # Convert cell radius -> eccentricity degrees using the inverse model
@@ -174,7 +173,7 @@ def retinal_distort(
     level_map = (ecc ** blur_gamma) * max_blur_level
     level_map = np.clip(level_map, 0, max_blur_level)
 
-    # Force fovea to level 0 (sharp)
+    # Force fovea to level 0 
     level_map = np.where(rad_deg <= fovea_deg, 0.0, level_map).astype(np.float32)
 
     # Accumulate weighted blend from pyramid levels
@@ -184,9 +183,9 @@ def retinal_distort(
     for l in range(max_blur_level + 1):
         # weight for this level based on distance to chosen level_map
         d = np.abs(level_map - l)
-        w_l = np.clip(1.0 - d, 0.0, 1.0).astype(np.float32)  # no smoothstep
+        w_l = np.clip(1.0 - d, 0.0, 1.0).astype(np.float32) 
 
-        # remap from pyramid level l (needs scaled coordinates)
+        # remap from pyramid level l
         scale = 1.0 / (2**l)
         sampled_l = cv2.remap(
             pyr[l],
@@ -212,12 +211,7 @@ def retinal_distort(
 # ============================================================
 class SparseRetinalWarp:
     """
-    Builds a sparse matrix W such that:
-        output_pixels = W @ input_pixels
-
-    Each output pixel is bilinearly sampled from the input, but the mapping
-    is precomputed into a sparse matrix for speed (reusable per image size).
-
+    Builds a sparse matrix W such that: output_pixels = W @ input_pixels
     model: "ganglion" or "cones"
     """
 
@@ -331,7 +325,7 @@ class SparseRetinalWarp:
         Apply the sparse warp to a square input image.
         """
         if img_bgr_uint8.ndim != 3 or img_bgr_uint8.shape[0] != img_bgr_uint8.shape[1]:
-            raise ValueError("Input must be square (pad first) and BGR (H,W,3).")
+            raise ValueError("Input must be square and BGR (H,W,3).")
 
         inS = img_bgr_uint8.shape[0]
         if (self.W is None) or (not self.reuse_matrix) or (self.inS != inS):
@@ -349,11 +343,11 @@ class SparseRetinalWarp:
 # Press-run exporter
 # ============================================================
 if __name__ == "__main__":
-    input_dir = r"C:\Users\Salina Maharjan\Desktop\Internship\images"
+    input_dir = r"<path to the folder with input images>"
 
-    out_fov_dir = r"C:\Users\Salina Maharjan\Desktop\Internship\images_fov2"
-    out_gang_dir = r"C:\Users\Salina Maharjan\Desktop\Internship\images_ganglion2"
-    out_cone_dir = r"C:\Users\Salina Maharjan\Desktop\Internship\images_cones2"
+    out_fov_dir = r"<path to the folder where we want to store output images>"
+    out_gang_dir = r"<path to the folder where we want to store output images>"
+    out_cone_dir = r"<path to the folder where we want to store output images>"
     os.makedirs(out_fov_dir, exist_ok=True)
     os.makedirs(out_gang_dir, exist_ok=True)
     os.makedirs(out_cone_dir, exist_ok=True)
